@@ -6,6 +6,7 @@ import com.rts.dto.RegisterRequest;
 import com.rts.entity.UserLogin;
 import com.rts.exception.UserAlreadyExistsException;
 import com.rts.repository.UserLoginRepository;
+import com.rts.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,10 +15,12 @@ public class AuthService {
 
     private final UserLoginRepository userLoginRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    public AuthService(UserLoginRepository userLoginRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserLoginRepository userLoginRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userLoginRepository = userLoginRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     public AuthResponse register(RegisterRequest registerRequest) {
@@ -31,17 +34,23 @@ public class AuthService {
 
         userLoginRepository.save(userLogin);
 
-        return new AuthResponse("User registered successfully!", true);
+        String token = jwtUtil.generateToken(userLogin.getUsername());
+
+        return new AuthResponse("User registered successfully!", true, null);
     }
+
 
     public AuthResponse login(LoginRequest loginRequest) {
         UserLogin userLogin = userLoginRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (passwordEncoder.matches(loginRequest.getPassword(), userLogin.getPassword())) {
-            return new AuthResponse("Login successful!", true);
+            String token = jwtUtil.generateToken(userLogin.getUsername());
+            return new AuthResponse("Login successful!", true, token);
         } else {
-            return new AuthResponse("Invalid password", false);
+            return new AuthResponse("Invalid password", false, null);
         }
     }
+
+
 }
